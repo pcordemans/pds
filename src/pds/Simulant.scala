@@ -22,6 +22,14 @@ trait Simulant extends Actor {
 	val clock: ActorRef
 	var observers: List[ActorRef] = List()
 
+	/**
+	  * accepts following messages
+	  * AddObserver
+	  */
+	override def receive = {
+		case AddObserver(obs) => observers = obs :: observers
+	}
+
 }
 
 /**
@@ -45,13 +53,10 @@ class Wire(name: String, init: LogicLevel = X, delay: Int = 1, clk: ActorRef) ex
 	private var logiclevel: LogicLevel = init
 
 	/**
-	  * Receives accepts following messages (otherwise logs a warning)
-	  * AddObserver (should be part of the Simulant trait)
+	  * accepts following messages (otherwise logs a warning)
 	  * SetSignal
 	  */
-	def receive = {
-		case AddObserver(obs) => observers = obs :: observers
-
+	override def receive = super.receive orElse {
 		case SetSignal(lvl) =>
 			if (lvl != logiclevel) {
 				logiclevel = lvl
