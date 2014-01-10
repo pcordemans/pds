@@ -22,12 +22,25 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 			akka.actor.debug.event-stream = on
 			""")))
 
+	var cl: ActorRef = _
+
+	before {
+		cl = system.actorOf(Clock.props)
+	}
+
+	override def afterAll {
+		system.shutdown()
+	}
+
+	test("start clock") {
+		cl ! Start
+		expectMsg(StoppedAt(1))
+	}
+
 	test("add simulant to clock") {
-		val cl = system.actorOf(Clock.props)
 		val w = system.actorOf(Wire.props("a", High, cl))
 		w ! AddObserver(testActor)
 		w ! SetSignal(Low)
 		expectMsg(SignalChanged(w, Low))
 	}
-
 }
