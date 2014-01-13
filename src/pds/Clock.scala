@@ -95,13 +95,6 @@ class Clock extends Actor {
 			initiator ! StoppedAt(currentTime)
 			End
 		}
-		def process(items: List[WorkItem]): List[WorkItem] = {
-			if (items == List()) return items
-			else {
-				items.head.target ! items.head.msg
-				process(items.tail)
-			}
-		}
 
 		def notifySimulants: Unit = {
 			waitingForTock = simulants
@@ -113,7 +106,7 @@ class Clock extends Actor {
 				currentTime += 1
 				if (agenda.isEmpty) return endSimulation
 				val currentWorkItems = agenda.filter(item => item.time == currentTime)
-				process(currentWorkItems)
+				currentWorkItems.foreach(item => item.target ! item.msg)
 				agenda = agenda.diff(currentWorkItems)
 				notifySimulants
 				WaitForTocks
