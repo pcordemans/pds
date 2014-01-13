@@ -2,6 +2,7 @@ package pds
 
 import akka.actor._
 import akka.event.Logging
+import akka.event.LoggingReceive
 
 /**
   * Enum of clock machine actions
@@ -9,7 +10,7 @@ import akka.event.Logging
   */
 object ClockAction extends Enumeration {
 	type ClockAction = Value
-	val WaitForTocks, End = Value
+	val NextTick, WaitForTocks, End = Value
 }
 import ClockAction._
 
@@ -31,6 +32,7 @@ class Clock extends Actor {
 	private var initiator: ActorRef = _
 	private var agenda: List[WorkItem] = List()
 	private var simulants: List[ActorRef] = List()
+	private var waitingForTock: List[ActorRef] = List()
 
 	/**
 	  * Receives accepts following messages (otherwise logs a warning)
@@ -38,13 +40,20 @@ class Clock extends Actor {
 	  * Start
 	  * Register
 	  * AddWorkitem
+	  * Tock
 	  */
-	def receive = {
+	def receive = LoggingReceive {
 		case Start =>
 			initiator = sender
-			advance
+			advance(NextTick)
 
 		case AddWorkItem(item) => agenda = item :: agenda
+
+		case Tock =>
+			simulantReplied(sender) match {
+				case List() => advance(NextTick)
+				case _ =>
+			}
 
 		case Register => simulants = sender :: simulants
 
@@ -60,7 +69,27 @@ class Clock extends Actor {
 		return "Clock at " + currentTime
 	}
 
-	private def advance: ClockAction = {
+	/**
+	  * registers the simulant, which sends a tock
+	  * @param simulant
+	  * @return list of simulants, which still need to send a tock
+	  */
+	private def simulantReplied(simulant: ActorRef): List[ActorRef] = {
+		waitingForTock = waitingForTock.diff(List(simulant))
+		waitingForTock
+	}
+
+	/**
+	  * Drives statemachine of the clock
+	  * 1) Proceeds to the next time
+	  * 2) Sends WorkItems for the currentTime
+	  * 3) Sends Ticks to all simulants
+	  * 4) Waits for Tocks, when all simulants have replied proceed
+	  *
+	  * @param action of the current time
+	  * @return next action
+	  */
+	private def advance(action: ClockAction): ClockAction = {
 
 		def endSimulation(): ClockAction = {
 			initiator ! StoppedAt(currentTime)
@@ -73,10 +102,22 @@ class Clock extends Actor {
 				process(items.tail)
 			}
 		}
-		currentTime += 1
-		if (agenda.isEmpty) return endSimulation
-		process(agenda.filter(item => item.time == currentTime))
-		WaitForTocks
+
+		def notifySimulants: Unit = {
+			waitingForTock = simulants
+			simulants.foreach(_ ! Tick)
+		}
+
+		action match {
+			case NextTick =>
+				currentTime += 1
+				if (agenda.isEmpty) return endSimulation
+				val currentWorkItems = agenda.filter(item => item.time == currentTime)
+				process(currentWorkItems)
+				agenda = agenda.diff(currentWorkItems)
+				notifySimulants
+				WaitForTocks
+		}
 	}
 }
 

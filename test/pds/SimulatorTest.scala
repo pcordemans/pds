@@ -23,9 +23,11 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 			""")))
 
 	var cl: ActorRef = _
+	var testCount = 0
 
 	before {
-		cl = system.actorOf(Clock.props)
+		testCount += 1
+		cl = system.actorOf(Clock.props, "clock_" + testCount)
 	}
 
 	override def afterAll {
@@ -43,8 +45,24 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		expectMsg(TestMsg)
 	}
 
+	test("send tick to simulant with no currentItems, simulant returns tock") {
+		val w = system.actorOf(Wire.props("a", High, cl), "w1")
+		w ! Tick
+		expectMsg(Tock)
+	}
+
+	test("start clock with Agenda, end processing when no AgendaItems are left") {
+		cl ! Register
+		cl ! AddWorkItem(WorkItem(1, TestMsg, self))
+		cl ! Start
+		expectMsg(TestMsg)
+		expectMsg(Tick)
+		cl ! Tock
+		expectMsg(StoppedAt(2))
+	}
+
 	test("add observer to wire") {
-		val w = system.actorOf(Wire.props("a", High, cl))
+		val w = system.actorOf(Wire.props("a", High, cl), "w2")
 		w ! AddObserver(testActor)
 		w ! SetSignal(Low)
 		expectMsg(SignalChanged(w, Low))

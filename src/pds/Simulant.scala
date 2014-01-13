@@ -2,6 +2,7 @@ package pds
 
 import akka.actor._
 import akka.event.Logging
+import akka.event.LoggingReceive
 
 /**
   * Enum of logic levels
@@ -25,9 +26,11 @@ trait Simulant extends Actor {
 	/**
 	  * accepts following messages
 	  * AddObserver
+	  * Tick
 	  */
-	override def receive = {
+	override def receive = LoggingReceive {
 		case AddObserver(obs) => observers = obs :: observers
+		case Tick => sender ! Tock
 	}
 
 }
@@ -51,6 +54,8 @@ object Wire {
 class Wire(name: String, init: LogicLevel = X, delay: Int = 1, clk: ActorRef) extends Simulant {
 	val clock = clk
 	private var logiclevel: LogicLevel = init
+
+	clock ! Register
 
 	/**
 	  * accepts following messages (otherwise logs a warning)
@@ -80,6 +85,8 @@ class Wire(name: String, init: LogicLevel = X, delay: Int = 1, clk: ActorRef) ex
 	}
 }
 
+case object Tick
+case object Tock
 case class SignalChanged(simulant: ActorRef, newLevel: LogicLevel)
 case class AfterDelay(time: Int, change: SignalChanged, observer: ActorRef)
 case class SetSignal(newLevel: LogicLevel)
