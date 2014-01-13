@@ -57,13 +57,14 @@ class Wire(name: String, init: LogicLevel = X, delay: Int = 1, clk: ActorRef) ex
 	  * SetSignal
 	  */
 	override def receive = super.receive orElse {
+		case Start => signalObservers
 		case SetSignal(lvl) =>
 			if (lvl != logiclevel) {
 				logiclevel = lvl
 				signalObservers
 			}
 
-		case msg => log.warning("Received unknown message: " + msg)
+		case msg => log.warning(this + " received unknown message: " + msg)
 	}
 
 	private def signalObservers(): Unit = {
@@ -71,6 +72,12 @@ class Wire(name: String, init: LogicLevel = X, delay: Int = 1, clk: ActorRef) ex
 			clock ! AfterDelay(delay, SignalChanged(self, logiclevel), obs)
 	}
 
+	override def hashCode: Int =
+		41 * (41 + clk.hashCode) + logiclevel.hashCode
+
+	override def toString(): String = {
+		return "Wire " + name
+	}
 }
 
 case class SignalChanged(simulant: ActorRef, newLevel: LogicLevel)
