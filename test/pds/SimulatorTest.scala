@@ -14,7 +14,7 @@ import LogicLevel._
 class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with FunSuite with BeforeAndAfter with BeforeAndAfterAll {
 
 	def this() = this(ActorSystem("TestSystem", ConfigFactory.parseString(
-		"""akka.loglevel = WARNING
+		"""akka.loglevel = DEBUG
 			akka.stdout-loglevel = INFO
 			akka.actor.default-dispatcher.throughput = 1	
 			akka.actor.debug.receive = on
@@ -61,10 +61,29 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		expectMsg(StoppedAt(2))
 	}
 
-	test("add observer to wire") {
+	test("add work items with a longer delay") {
+		cl ! Register
+		cl ! AddWorkItem(WorkItem(3, TestMsg, self))
+		cl ! Start
+
+		expectMsg(Tick)
+		cl ! Tock
+		expectMsg(Tick)
+		cl ! Tock
+
+		expectMsg(TestMsg)
+
+		expectMsg(Tick)
+		cl ! Tock
+
+		expectMsg(StoppedAt(4))
+	}
+
+	ignore("add observer to wire") {
 		val w = system.actorOf(Wire.props("a", High, cl), "w2")
 		w ! AddObserver(testActor)
 		w ! SetSignal(Low)
+		cl ! Start
 		expectMsg(SignalChanged(w, Low))
 	}
 
@@ -73,13 +92,6 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		w ! AddObserver(testActor)
 		cl ! Start
 		expectMsg(SignalChanged(w, High))
-		expectMsg(StoppedAt(2))
-	}
-
-	ignore("upon receiving an AfterDelay message, schedule a new work item") {
-		val w = system.actorOf(Wire.props("a", High, cl))
-		cl ! Start
-		w ! SetSignal(Low)
 		expectMsg(StoppedAt(2))
 	}
 }

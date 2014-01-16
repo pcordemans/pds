@@ -57,8 +57,6 @@ class Clock extends Actor {
 
 		case Register => simulants = sender :: simulants
 
-		case AfterDelay(time: Int, change: SignalChanged, observer: ActorRef) => observer ! change
-
 		case msg => log.warning(this + " received unknown message: " + msg)
 	}
 

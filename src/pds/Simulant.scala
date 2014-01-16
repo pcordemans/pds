@@ -56,13 +56,13 @@ class Wire(name: String, init: LogicLevel = X, delay: Int = 1, clk: ActorRef) ex
 	private var logiclevel: LogicLevel = init
 
 	clock ! Register
+	signalObservers
 
 	/**
 	  * accepts following messages (otherwise logs a warning)
 	  * SetSignal
 	  */
 	override def receive = super.receive orElse {
-		case Start => signalObservers
 		case SetSignal(lvl) =>
 			if (lvl != logiclevel) {
 				logiclevel = lvl
@@ -74,7 +74,7 @@ class Wire(name: String, init: LogicLevel = X, delay: Int = 1, clk: ActorRef) ex
 
 	private def signalObservers(): Unit = {
 		for (obs <- observers)
-			clock ! AfterDelay(delay, SignalChanged(self, logiclevel), obs)
+			clock ! AddWorkItem(WorkItem(delay, SignalChanged(self, logiclevel), obs))
 	}
 
 	override def hashCode: Int =
