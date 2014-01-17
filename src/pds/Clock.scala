@@ -49,7 +49,9 @@ class Clock extends Actor {
 			numberOfComponents = expectedNumber
 			advance(start)
 
-		case AddWorkItem(item) => agenda = item :: agenda
+		case AddWorkItem(item) =>
+			val scheduledItem = WorkItem(currentTime + item.time, item.msg, item.target)
+			agenda = scheduledItem :: agenda
 
 		case Tock =>
 			simulantReplied(sender) match {
