@@ -45,6 +45,7 @@ class Clock extends Actor {
 	def receive = LoggingReceive {
 		case Start =>
 			initiator = sender
+			simulants.foreach(_ ! Start)
 			advance(NextTick)
 
 		case AddWorkItem(item) => agenda = item :: agenda

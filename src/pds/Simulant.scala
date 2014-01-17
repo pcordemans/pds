@@ -56,11 +56,11 @@ class Wire(name: String, init: LogicLevel = X, delay: Int = 1, clk: ActorRef) ex
 	private var logiclevel: LogicLevel = init
 
 	clock ! Register
-	signalObservers
 
 	/**
 	  * accepts following messages (otherwise logs a warning)
 	  * SetSignal
+	  * Start
 	  */
 	override def receive = super.receive orElse {
 		case SetSignal(lvl) =>
@@ -68,6 +68,7 @@ class Wire(name: String, init: LogicLevel = X, delay: Int = 1, clk: ActorRef) ex
 				logiclevel = lvl
 				signalObservers
 			}
+		case Start => signalObservers
 
 		case msg => log.warning(this + " received unknown message: " + msg)
 	}

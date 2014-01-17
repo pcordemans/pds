@@ -55,6 +55,7 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		cl ! Register
 		cl ! AddWorkItem(WorkItem(1, TestMsg, self))
 		cl ! Start
+		expectMsg(Start)
 		expectMsg(TestMsg)
 		expectMsg(Tick)
 		cl ! Tock
@@ -66,6 +67,7 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		cl ! AddWorkItem(WorkItem(3, TestMsg, self))
 		cl ! Start
 
+		expectMsg(Start)
 		expectMsg(Tick)
 		cl ! Tock
 		expectMsg(Tick)
@@ -79,6 +81,14 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		expectMsg(StoppedAt(4))
 	}
 
+	test("initial logic level is propagated when simulation is started") {
+		val w = system.actorOf(Wire.props("a", High, cl))
+		w ! AddObserver(testActor)
+		cl ! Start
+		expectMsg(SignalChanged(w, High))
+		expectMsg(StoppedAt(2))
+	}
+
 	ignore("add observer to wire") {
 		val w = system.actorOf(Wire.props("a", High, cl), "w2")
 		w ! AddObserver(testActor)
@@ -87,13 +97,6 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		expectMsg(SignalChanged(w, Low))
 	}
 
-	ignore("initial logic level is propagated when simulation is started") {
-		val w = system.actorOf(Wire.props("a", High, cl))
-		w ! AddObserver(testActor)
-		cl ! Start
-		expectMsg(SignalChanged(w, High))
-		expectMsg(StoppedAt(2))
-	}
 }
 
 case object TestMsg
