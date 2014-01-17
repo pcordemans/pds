@@ -94,6 +94,9 @@ class Clock extends Actor {
 		waitingForTock
 	}
 
+	/**
+	  * sends ticks to each registered simulant
+	  */
 	private def notifySimulants: ClockAction = {
 		waitingForTock = simulants
 		simulants.foreach(_ ! Tick)

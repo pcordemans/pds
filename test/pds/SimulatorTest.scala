@@ -14,7 +14,7 @@ import LogicLevel._
 class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with FunSuite with BeforeAndAfter with BeforeAndAfterAll {
 
 	def this() = this(ActorSystem("TestSystem", ConfigFactory.parseString(
-		"""akka.loglevel = WARNING
+		"""akka.loglevel = DEBUG
 			akka.stdout-loglevel = INFO
 			akka.actor.default-dispatcher.throughput = 1	
 			akka.actor.debug.receive = on
@@ -116,6 +116,18 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		expectMsg(SignalChanged(w, Low))
 
 		ticktock
+		expectMsg(StoppedAt(6))
+	}
+
+	test("AND gate propagates signal") {
+		val in1 = system.actorOf(Wire.props("in1", Low, cl), "in1")
+		val in2 = system.actorOf(Wire.props("in1", High, cl), "in2")
+		val out = system.actorOf(Wire.props("out", X, cl), "out")
+		out ! AddObserver(testActor)
+		val andgate = system.actorOf(AndGate.props("and", in1, in2, out, cl))
+		cl ! Start(4)
+		expectMsg(SignalChanged(out, X))
+		expectMsg(SignalChanged(out, Low))
 		expectMsg(StoppedAt(6))
 	}
 }
