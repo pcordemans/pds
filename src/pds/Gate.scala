@@ -24,7 +24,7 @@ class AndGate(name: String, in1: ActorRef, in2: ActorRef, out: ActorRef, clk: Ac
 	  */
 	override def receive = super.receive orElse {
 		case Start =>
-		case SignalChanged(wire, lvl) =>
+		case (SignalChanged(wire, lvl), time) =>
 			val new_lvl = update(wire, lvl)
 			if (new_lvl != lvl_out) {
 				lvl_out = new_lvl

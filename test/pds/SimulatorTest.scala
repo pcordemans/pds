@@ -62,7 +62,7 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		cl ! AddWorkItem(WorkItem(1, TestMsg, self))
 		start
 		ticktock(0)
-		expectMsg(TestMsg)
+		expectMsg((TestMsg, 1))
 		ticktock(1)
 		expectMsg(StoppedAt(2))
 	}
@@ -74,7 +74,7 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 
 		for (i <- 0 to 2) ticktock(i)
 
-		expectMsg(TestMsg)
+		expectMsg((TestMsg, 3))
 
 		ticktock(3)
 
@@ -85,7 +85,7 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		val w = system.actorOf(Wire.props("a", High, cl))
 		w ! AddObserver(testActor)
 		cl ! Start(1)
-		expectMsg(SignalChanged(w, High))
+		expectMsg((SignalChanged(w, High), 1))
 		expectMsg(StoppedAt(2))
 	}
 
@@ -107,13 +107,13 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		cl ! Register
 		expectMsg(Start)
 		ticktock(0)
-		expectMsg(SignalChanged(w, High))
+		expectMsg((SignalChanged(w, High), 1))
 
 		cl ! AddWorkItem(WorkItem(3, SetSignal(Low), w))
 
 		for (i <- 1 to 4) ticktock(i)
 
-		expectMsg(SignalChanged(w, Low))
+		expectMsg((SignalChanged(w, Low), 5))
 
 		ticktock(5)
 		expectMsg(StoppedAt(6))
@@ -126,8 +126,8 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		out ! AddObserver(testActor)
 		val andgate = system.actorOf(AndGate.props("and", in1, in2, out, cl))
 		cl ! Start(4)
-		expectMsg(SignalChanged(out, X))
-		expectMsg(SignalChanged(out, Low))
+		expectMsg((SignalChanged(out, X), 1))
+		expectMsg((SignalChanged(out, Low), 5))
 		expectMsg(StoppedAt(6))
 	}
 }

@@ -63,7 +63,7 @@ class Wire(name: String, init: LogicLevel = X, delay: Int = 1, clk: ActorRef) ex
 	  * Start
 	  */
 	override def receive = super.receive orElse {
-		case SetSignal(lvl) =>
+		case (SetSignal(lvl), time) =>
 			if (lvl != logiclevel) {
 				logiclevel = lvl
 				signalObservers

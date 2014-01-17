@@ -125,7 +125,7 @@ class Clock extends Actor {
 				currentTime += 1
 				if (agenda.isEmpty) return endSimulation
 				val currentWorkItems = agenda.filter(item => item.time == currentTime)
-				currentWorkItems.foreach(item => item.target ! item.msg)
+				currentWorkItems.foreach(item => item.target ! (item.msg, item.time))
 				agenda = agenda.diff(currentWorkItems)
 				notifySimulants
 			case WaitForRegistration => WaitForRegistration
