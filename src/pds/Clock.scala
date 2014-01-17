@@ -10,7 +10,7 @@ import akka.event.LoggingReceive
   */
 object ClockAction extends Enumeration {
 	type ClockAction = Value
-	val NextTick, WaitForTocks, End = Value
+	val NextTick, WaitForTocks, WaitForRegistration, End = Value
 }
 import ClockAction._
 
@@ -28,11 +28,12 @@ object Clock {
   */
 class Clock extends Actor {
 	val log = Logging(context.system, this)
-	private var currentTime = 0
+	private var currentTime: Int = 0
 	private var initiator: ActorRef = _
 	private var agenda: List[WorkItem] = List()
 	private var simulants: List[ActorRef] = List()
 	private var waitingForTock: List[ActorRef] = List()
+	private var numberOfComponents: Int = 0
 
 	/**
 	  * Receives accepts following messages (otherwise logs a warning)
@@ -43,10 +44,10 @@ class Clock extends Actor {
 	  * Tock
 	  */
 	def receive = LoggingReceive {
-		case Start =>
+		case Start(expectedNumber) =>
 			initiator = sender
-			simulants.foreach(_ ! Start)
-			advance(NextTick)
+			numberOfComponents = expectedNumber
+			advance(start)
 
 		case AddWorkItem(item) => agenda = item :: agenda
 
@@ -56,7 +57,9 @@ class Clock extends Actor {
 				case _ =>
 			}
 
-		case Register => simulants = sender :: simulants
+		case Register =>
+			simulants = sender :: simulants
+			advance(start)
 
 		case msg => log.warning(this + " received unknown message: " + msg)
 	}
@@ -69,6 +72,17 @@ class Clock extends Actor {
 	}
 
 	/**
+	  * starts the simulation when the expected number of components has been reached
+	  * @return WaitForRegistration / NextTick
+	  */
+	private def start: ClockAction = {
+		if (numberOfComponents == simulants.size) {
+			simulants.foreach(_ ! Start)
+			notifySimulants
+		} else WaitForRegistration
+	}
+
+	/**
 	  * registers the simulant, which sends a tock
 	  * @param simulant
 	  * @return list of simulants, which still need to send a tock
@@ -76,6 +90,12 @@ class Clock extends Actor {
 	private def simulantReplied(simulant: ActorRef): List[ActorRef] = {
 		waitingForTock = waitingForTock.diff(List(simulant))
 		waitingForTock
+	}
+
+	private def notifySimulants: ClockAction = {
+		waitingForTock = simulants
+		simulants.foreach(_ ! Tick)
+		WaitForTocks
 	}
 
 	/**
@@ -95,11 +115,6 @@ class Clock extends Actor {
 			End
 		}
 
-		def notifySimulants: Unit = {
-			waitingForTock = simulants
-			simulants.foreach(_ ! Tick)
-		}
-
 		action match {
 			case NextTick =>
 				currentTime += 1
@@ -108,12 +123,13 @@ class Clock extends Actor {
 				currentWorkItems.foreach(item => item.target ! item.msg)
 				agenda = agenda.diff(currentWorkItems)
 				notifySimulants
-				WaitForTocks
+			case WaitForRegistration => WaitForRegistration
+			case WaitForTocks => WaitForTocks
 		}
 	}
 }
 
-case object Start
+case class Start(numberOfComponents: Int = 0)
 case class StoppedAt(time: Int)
 case class AddWorkItem(item: WorkItem)
 case class WorkItem(time: Int, msg: Any, target: ActorRef)

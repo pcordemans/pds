@@ -14,7 +14,7 @@ import LogicLevel._
 class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with FunSuite with BeforeAndAfter with BeforeAndAfterAll {
 
 	def this() = this(ActorSystem("TestSystem", ConfigFactory.parseString(
-		"""akka.loglevel = DEBUG
+		"""akka.loglevel = WARNING
 			akka.stdout-loglevel = INFO
 			akka.actor.default-dispatcher.throughput = 1	
 			akka.actor.debug.receive = on
@@ -34,15 +34,21 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		system.shutdown()
 	}
 
-	test("start clock without an Agenda immediately stops") {
-		cl ! Start
-		expectMsg(StoppedAt(1))
+	private def ticktock: Unit = {
+		expectMsg(Tick)
+		cl ! Tock
 	}
 
-	test("start clock with Agenda, proceeds until all AgendaItems are processed") {
-		cl ! AddWorkItem(WorkItem(1, TestMsg, self))
-		cl ! Start
-		expectMsg(TestMsg)
+	private def start: Unit = {
+		cl ! Start(1)
+		expectMsg(Start)
+	}
+
+	test("start clock without an Agenda immediately stops") {
+		cl ! Register
+		start
+		ticktock
+		expectMsg(StoppedAt(1))
 	}
 
 	test("send tick to simulant with no currentItems, simulant returns tock") {
@@ -54,29 +60,23 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 	test("start clock with Agenda, end processing when no AgendaItems are left") {
 		cl ! Register
 		cl ! AddWorkItem(WorkItem(1, TestMsg, self))
-		cl ! Start
-		expectMsg(Start)
+		start
+		ticktock
 		expectMsg(TestMsg)
-		expectMsg(Tick)
-		cl ! Tock
+		ticktock
 		expectMsg(StoppedAt(2))
 	}
 
 	test("add work items with a longer delay") {
 		cl ! Register
 		cl ! AddWorkItem(WorkItem(3, TestMsg, self))
-		cl ! Start
+		start
 
-		expectMsg(Start)
-		expectMsg(Tick)
-		cl ! Tock
-		expectMsg(Tick)
-		cl ! Tock
+		for (i <- 1 to 3) ticktock
 
 		expectMsg(TestMsg)
 
-		expectMsg(Tick)
-		cl ! Tock
+		ticktock
 
 		expectMsg(StoppedAt(4))
 	}
@@ -84,7 +84,7 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 	test("initial logic level is propagated when simulation is started") {
 		val w = system.actorOf(Wire.props("a", High, cl))
 		w ! AddObserver(testActor)
-		cl ! Start
+		cl ! Start(1)
 		expectMsg(SignalChanged(w, High))
 		expectMsg(StoppedAt(2))
 	}
@@ -93,7 +93,7 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		val w = system.actorOf(Wire.props("a", High, cl), "w2")
 		w ! AddObserver(testActor)
 		w ! SetSignal(Low)
-		cl ! Start
+		cl ! Start(1)
 		expectMsg(SignalChanged(w, Low))
 	}
 
