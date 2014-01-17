@@ -30,7 +30,7 @@ trait Simulant extends Actor {
 	  */
 	override def receive = LoggingReceive {
 		case AddObserver(obs) => observers = obs :: observers
-		case Tick => sender ! Tock
+		case Tick(time) => sender ! Tock(time)
 	}
 
 }
@@ -86,10 +86,9 @@ class Wire(name: String, init: LogicLevel = X, delay: Int = 1, clk: ActorRef) ex
 	}
 }
 
-case object Tick
-case object Tock
+case class Tick(time: Int)
+case class Tock(time: Int)
 case class SignalChanged(simulant: ActorRef, newLevel: LogicLevel)
-case class AfterDelay(time: Int, change: SignalChanged, observer: ActorRef)
 case class SetSignal(newLevel: LogicLevel)
 case class AddObserver(observer: ActorRef)
 

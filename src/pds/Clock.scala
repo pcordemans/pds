@@ -53,7 +53,7 @@ class Clock extends Actor {
 			val scheduledItem = WorkItem(currentTime + item.time, item.msg, item.target)
 			agenda = scheduledItem :: agenda
 
-		case Tock =>
+		case Tock(time) =>
 			simulantReplied(sender) match {
 				case List() => advance(NextTick)
 				case _ =>
@@ -99,7 +99,7 @@ class Clock extends Actor {
 	  */
 	private def notifySimulants: ClockAction = {
 		waitingForTock = simulants
-		simulants.foreach(_ ! Tick)
+		simulants.foreach(_ ! Tick(currentTime))
 		WaitForTocks
 	}
 

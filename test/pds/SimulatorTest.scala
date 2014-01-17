@@ -14,7 +14,7 @@ import LogicLevel._
 class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with FunSuite with BeforeAndAfter with BeforeAndAfterAll {
 
 	def this() = this(ActorSystem("TestSystem", ConfigFactory.parseString(
-		"""akka.loglevel = DEBUG
+		"""akka.loglevel = WARNING
 			akka.stdout-loglevel = INFO
 			akka.actor.default-dispatcher.throughput = 1	
 			akka.actor.debug.receive = on
@@ -34,9 +34,9 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		system.shutdown()
 	}
 
-	private def ticktock: Unit = {
-		expectMsg(Tick)
-		cl ! Tock
+	private def ticktock(time: Int): Unit = {
+		expectMsg(Tick(time))
+		cl ! Tock(time)
 	}
 
 	private def start: Unit = {
@@ -47,23 +47,23 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 	test("start clock without an Agenda immediately stops") {
 		cl ! Register
 		start
-		ticktock
+		ticktock(0)
 		expectMsg(StoppedAt(1))
 	}
 
 	test("send tick to simulant with no currentItems, simulant returns tock") {
 		val w = system.actorOf(Wire.props("a", High, cl), "w1")
-		w ! Tick
-		expectMsg(Tock)
+		w ! Tick(0)
+		expectMsg(Tock(0))
 	}
 
 	test("start clock with Agenda, end processing when no AgendaItems are left") {
 		cl ! Register
 		cl ! AddWorkItem(WorkItem(1, TestMsg, self))
 		start
-		ticktock
+		ticktock(0)
 		expectMsg(TestMsg)
-		ticktock
+		ticktock(1)
 		expectMsg(StoppedAt(2))
 	}
 
@@ -72,11 +72,11 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		cl ! AddWorkItem(WorkItem(3, TestMsg, self))
 		start
 
-		for (i <- 1 to 3) ticktock
+		for (i <- 0 to 2) ticktock(i)
 
 		expectMsg(TestMsg)
 
-		ticktock
+		ticktock(3)
 
 		expectMsg(StoppedAt(4))
 	}
@@ -96,7 +96,7 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 
 		expectMsg(Start)
 
-		ticktock
+		ticktock(0)
 		expectMsg(StoppedAt(1))
 	}
 
@@ -106,16 +106,16 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		cl ! Start(2)
 		cl ! Register
 		expectMsg(Start)
-		ticktock
+		ticktock(0)
 		expectMsg(SignalChanged(w, High))
 
 		cl ! AddWorkItem(WorkItem(3, SetSignal(Low), w))
 
-		for (i <- 1 to 4) ticktock
+		for (i <- 1 to 4) ticktock(i)
 
 		expectMsg(SignalChanged(w, Low))
 
-		ticktock
+		ticktock(5)
 		expectMsg(StoppedAt(6))
 	}
 
