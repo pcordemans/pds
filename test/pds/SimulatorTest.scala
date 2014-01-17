@@ -14,7 +14,7 @@ import LogicLevel._
 class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with FunSuite with BeforeAndAfter with BeforeAndAfterAll {
 
 	def this() = this(ActorSystem("TestSystem", ConfigFactory.parseString(
-		"""akka.loglevel = WARNING
+		"""akka.loglevel = DEBUG
 			akka.stdout-loglevel = INFO
 			akka.actor.default-dispatcher.throughput = 1	
 			akka.actor.debug.receive = on
@@ -89,14 +89,27 @@ class SimulatorTest(_system: ActorSystem) extends TestKit(_system) with Implicit
 		expectMsg(StoppedAt(2))
 	}
 
-	ignore("add observer to wire") {
-		val w = system.actorOf(Wire.props("a", High, cl), "w2")
-		w ! AddObserver(testActor)
-		w ! SetSignal(Low)
+	test("registration of components is possible after the start message has been sent") {
 		cl ! Start(1)
-		expectMsg(SignalChanged(w, Low))
+
+		cl ! Register
+
+		expectMsg(Start)
+
+		ticktock
+		expectMsg(StoppedAt(1))
 	}
 
+	ignore("introduce a new signalchanged in the simulation") {
+		val w = system.actorOf(Wire.props("a", High, cl), "w2")
+		w ! AddObserver(testActor)
+		cl ! Start(2)
+		cl ! Register
+		expectMsg(Start)
+
+		expectMsg(SignalChanged(w, Low))
+		expectMsg(StoppedAt(3))
+	}
 }
 
 case object TestMsg
